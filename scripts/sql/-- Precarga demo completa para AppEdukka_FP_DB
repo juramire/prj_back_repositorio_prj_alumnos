@@ -1,0 +1,112 @@
+-- Precarga demo completa para AppEdukka_FP_DB
+-- Ejecutar después de crear la BBDD con AppEdukka_FP_DB_full.sql
+
+USE AppEdukka_FP_DB;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Limpieza de datos dependientes de usuarios
+TRUNCATE TABLE usuarios_roles;
+TRUNCATE TABLE alumnos_modulos_pendientes;
+TRUNCATE TABLE matriculas_alumnos;
+TRUNCATE TABLE usuarios;
+
+-- Roles
+INSERT IGNORE INTO roles (id_rol, codigo, descripcion) VALUES
+(1,'ALUMNO','Alumno'),
+(2,'DOCENTE','Docente'),
+(3,'ADMIN','Administrador'),
+(4,'EQUIPO_DIRECTIVO','Equipo directivo'),
+(5,'JEFE_DEPARTAMENTO','Jefe de departamento');
+
+-- Hash bcrypt de la cadena "password"
+SET @HASH := '$2b$10$kn5FiSryAUhmS8rNJ2SnJ.i2iclJvDS/UoyoxhWP6yE734ZOK43Jq';
+SET @NOW := NOW();
+
+-- Usuarios (5 alumnos + 1 por rol)
+INSERT INTO usuarios (id_usuario, nombre, apellidos, email, nombre_usuario, hash_password,
+                      email_verificado, token_confirmacion, token_reset, fecha_token_reset,
+                      activo, fecha_creacion, fecha_actualizacion, fecha_borrado)
+VALUES
+-- Alumnos
+(101, 'Ana',   'Alumno', 'alumna1@demo.com', 'alumna1', @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(102, 'Bruno', 'Alumno', 'alumno2@demo.com', 'alumno2', @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(103, 'Clara', 'Alumno', 'alumno3@demo.com', 'alumno3', @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(104, 'Diego', 'Alumno', 'alumno4@demo.com', 'alumno4', @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(105, 'Elena', 'Alumno', 'alumno5@demo.com', 'alumno5', @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+-- Roles únicos
+(201, 'Jefe',   'Departamento', 'jefe@demo.com',   'jefe_dpto',  @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(202, 'Equipo', 'Directivo',    'equipo@demo.com', 'equipo_dir', @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(203, 'Docente','Demo',         'docente@demo.com','docente1',   @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL),
+(204, 'Admin',  'Demo',         'admin@demo.com',  'admin1',     @HASH, 0, NULL, NULL, NULL, 1, @NOW, @NOW, NULL)
+ON DUPLICATE KEY UPDATE hash_password = VALUES(hash_password), activo = 1, fecha_borrado = NULL, fecha_actualizacion = @NOW;
+
+-- Asignación de roles
+INSERT IGNORE INTO usuarios_roles (id_usuario, id_rol) VALUES
+(101, (SELECT id_rol FROM roles WHERE codigo = 'ALUMNO')),
+(102, (SELECT id_rol FROM roles WHERE codigo = 'ALUMNO')),
+(103, (SELECT id_rol FROM roles WHERE codigo = 'ALUMNO')),
+(104, (SELECT id_rol FROM roles WHERE codigo = 'ALUMNO')),
+(105, (SELECT id_rol FROM roles WHERE codigo = 'ALUMNO')),
+(201, (SELECT id_rol FROM roles WHERE codigo = 'JEFE_DEPARTAMENTO')),
+(202, (SELECT id_rol FROM roles WHERE codigo = 'EQUIPO_DIRECTIVO')),
+(203, (SELECT id_rol FROM roles WHERE codigo = 'DOCENTE')),
+(204, (SELECT id_rol FROM roles WHERE codigo = 'ADMIN'));
+
+-- Familias / Ciclos / Cursos académicos / Cursos_ciclo
+INSERT IGNORE INTO familias_profesionales (id_familia_profesional, codigo, nombre)
+VALUES (1, 'IF', 'Informática y comunicaciones');
+
+INSERT INTO ciclos_formativos (id_ciclo_formativo, id_familia_profesional, codigo, nombre, nivel, activo)
+VALUES (1, 1, 'DAW', 'Desarrollo de Aplicaciones Web', 'CFGS', 1)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), activo = 1;
+
+INSERT INTO cursos_academicos (id_curso_academico, anio_inicio, anio_fin, descripcion, activo)
+VALUES (1, 2025, 2026, '2025-2026', 1)
+ON DUPLICATE KEY UPDATE activo = VALUES(activo);
+
+INSERT INTO cursos_ciclo (id_curso_ciclo, id_ciclo_formativo, numero)
+VALUES (1, 1, 2)
+ON DUPLICATE KEY UPDATE numero = VALUES(numero);
+
+-- Módulos
+INSERT INTO modulos_profesionales (id_modulo_profesional, id_ciclo_formativo, codigo, nombre, codigo_oficial, activo)
+VALUES (1, 1, 'PROY', 'Proyecto Intermodular', 'PROY-DAW', 1)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), activo = 1;
+
+-- Grupos
+INSERT INTO grupos (id_grupo, id_ciclo_formativo, id_curso_ciclo, id_curso_academico, nombre, turno, activo)
+VALUES (1, 1, 1, 1, '2DAW-A', 'Mañana', 1)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), activo = 1;
+
+-- Matrículas de alumnos (5 alumnos)
+INSERT INTO matriculas_alumnos (id_matricula, id_usuario, id_curso_academico, id_grupo, id_curso_ciclo, estado) VALUES
+(1, 101, 1, 1, 1, 'ACTIVA'),
+(2, 102, 1, 1, 1, 'ACTIVA'),
+(3, 103, 1, 1, 1, 'ACTIVA'),
+(4, 104, 1, 1, 1, 'ACTIVA'),
+(5, 105, 1, 1, 1, 'ACTIVA')
+ON DUPLICATE KEY UPDATE estado = VALUES(estado);
+
+-- Módulos pendientes (precarga opcional)
+INSERT INTO alumnos_modulos_pendientes (id_usuario, id_curso_academico, id_modulo_profesional, id_curso_ciclo_origen, observaciones) VALUES
+(101, 1, 1, 1, 'seed auto'),
+(102, 1, 1, 1, 'seed auto'),
+(103, 1, 1, 1, 'seed auto'),
+(104, 1, 1, 1, 'seed auto'),
+(105, 1, 1, 1, 'seed auto')
+ON DUPLICATE KEY UPDATE observaciones = VALUES(observaciones);
+
+-- Proyectos intermodulares de ejemplo
+INSERT INTO proyectos_finales
+ (id_proyecto_final, id_modulo_profesional, id_grupo, id_curso_academico, id_usuario_creador,
+  titulo, descripcion, resumen, tags, estado, fecha_creacion, fecha_actualizacion, fecha_envio, fecha_publicacion, video_url)
+VALUES
+(1, 1, 1, 1, 203, 'Proyecto de muestra', 'Descripción demo', 'Resumen demo', 'demo,seed', 'PUBLISHED',
+ NOW() - INTERVAL 15 DAY, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 10 DAY, NOW() - INTERVAL 1 DAY,
+ 'https://youtu.be/dQw4w9WgXcQ')
+ON DUPLICATE KEY UPDATE estado = VALUES(estado);
+
+INSERT IGNORE INTO proyectos_finales_media (id_proyecto_final, tipo, url, fecha_creacion)
+VALUES (1, 'PDF', 'https://example.com/demo.pdf', NOW() - INTERVAL 15 DAY);
+
+SET FOREIGN_KEY_CHECKS = 1;
